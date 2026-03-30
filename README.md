@@ -8,6 +8,11 @@
   Research trending topics, select sources, and generate LinkedIn posts with branded infographics - powered by AI.
 </p>
 
+<p align="center">
+  <a href="https://github.com/Affitor/content-pipeline/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Affitor/content-pipeline" alt="License" /></a>
+  <a href="https://github.com/Affitor/content-pipeline/stargazers"><img src="https://img.shields.io/github/stars/Affitor/content-pipeline" alt="Stars" /></a>
+</p>
+
 ---
 
 ## Features
