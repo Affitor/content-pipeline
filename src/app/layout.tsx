@@ -8,8 +8,14 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Affitor Content Pipeline",
-  description: "Research → Select → Format → Write LinkedIn content with AI",
+  title: "Content Pipeline | Affitor",
+  description: "AI-powered content pipeline: research trending topics, select sources, and generate LinkedIn posts with branded infographics.",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+  },
 };
 
 export default function RootLayout({

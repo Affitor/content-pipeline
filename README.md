@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Content Pipeline
 
-## Getting Started
+An AI-powered content pipeline that researches trending topics, lets you select sources, and generates LinkedIn posts with branded infographics.
 
-First, run the development server:
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Affitor/content-pipeline&env=ANTHROPIC_API_KEY,BRAVE_SEARCH_API_KEY&envDescription=API%20keys%20needed%20to%20run%20this%20app&envLink=https://github.com/Affitor/content-pipeline%23environment-variables)
+
+## Features
+
+- **Research** - Search the web for trending articles using Brave Search API (filter by News, LinkedIn, YouTube, Blogs)
+- **Select** - Browse results with auto-tags (Funding, AI, SaaS, Tools, Trends) and pick your sources
+- **Format** - Choose content format (Toplist, POV, Case Study, How-to), tone, length, language (EN/VN), and output count
+- **Write** - Generate LinkedIn posts with Claude, streamed in real-time
+- **Image** - Create branded infographics rendered server-side with Satori
+
+## How It Works
+
+```
+Topic → Brave Search (Web + News) → Select articles → Configure format
+  → Claude writes posts (streaming) → Satori renders infographics
+```
+
+Each post uses all selected articles as context but focuses on a different primary source, producing unique angles across multiple outputs.
+
+## Tech Stack
+
+- [Next.js 16](https://nextjs.org) - App Router, API Routes, Edge Runtime
+- [Anthropic Claude](https://anthropic.com) - Content generation (Sonnet 4)
+- [Brave Search API](https://brave.com/search/api/) - Web + News search
+- [Satori / @vercel/og](https://github.com/vercel/satori) - Server-side image generation
+- [Tailwind CSS v4](https://tailwindcss.com) - Styling
+- [TypeScript](https://typescriptlang.org) - Type safety
+
+## Running Locally
+
+```bash
+git clone https://github.com/Affitor/content-pipeline.git
+cd content-pipeline
+npm install
+cp .env.example .env.local
+```
+
+Add your API keys to `.env.local`, then:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ANTHROPIC_API_KEY` | Yes | Claude API key from [console.anthropic.com](https://console.anthropic.com/) |
+| `BRAVE_SEARCH_API_KEY` | Yes | Brave Search API key from [brave.com/search/api](https://brave.com/search/api/) |
 
-## Learn More
+## Contributing
 
-To learn more about Next.js, take a look at the following resources:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[MIT](LICENSE)

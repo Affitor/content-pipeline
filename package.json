@@ -1,12 +1,25 @@
 {
-  "name": "affitor-content-pipeline",
+  "name": "content-pipeline",
   "version": "0.1.0",
-  "private": true,
+  "description": "AI-powered content pipeline: research trending topics, select sources, and generate LinkedIn posts with branded infographics.",
+  "keywords": ["nextjs", "ai", "content-pipeline", "linkedin", "anthropic", "claude", "brave-search", "content-generation"],
+  "author": "Affitor <hello@affitor.com> (https://affitor.com)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Affitor/content-pipeline.git"
+  },
+  "homepage": "https://github.com/Affitor/content-pipeline#readme",
+  "bugs": {
+    "url": "https://github.com/Affitor/content-pipeline/issues"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
