@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { ResearchArticle } from "@/lib/types";
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const { topic } = await req.json();
@@ -20,10 +22,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Step 1: Search with Brave
+    // Search with Brave
     const searchUrl = new URL("https://api.search.brave.com/res/v1/web/search");
     searchUrl.searchParams.set("q", topic);
-    searchUrl.searchParams.set("count", "15");
+    searchUrl.searchParams.set("count", "20");
     searchUrl.searchParams.set("freshness", "pm"); // past month
     searchUrl.searchParams.set("text_decorations", "false");
 
@@ -46,94 +48,40 @@ export async function POST(req: NextRequest) {
     const searchData = await searchRes.json();
     const webResults = searchData.web?.results || [];
 
-    // Step 2: Use Claude to extract structured articles from search results
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    if (!anthropicKey) {
-      return NextResponse.json(
-        { error: "Anthropic API key not configured" },
-        { status: 500 }
-      );
-    }
+    // Structure Brave results directly — no Claude call needed
+    // This keeps the research step fast (<3s)
+    const articles: ResearchArticle[] = webResults
+      .filter((r: { title?: string; url?: string }) => r.title && r.url)
+      .map((r: { title: string; url: string; description?: string; age?: string; page_age?: string; meta_url?: { hostname?: string } }, i: number) => {
+        // Extract source from hostname
+        const hostname = r.meta_url?.hostname || new URL(r.url).hostname;
+        const source = hostname
+          .replace(/^www\./, "")
+          .replace(/\.com$|\.org$|\.net$|\.io$/, "")
+          .split(".")
+          .pop() || hostname;
+        const sourceName = source.charAt(0).toUpperCase() + source.slice(1);
 
-    const resultsText = webResults
-      .map(
-        (r: { title: string; url: string; description: string; age?: string; page_age?: string }, i: number) =>
-          `${i + 1}. Title: ${r.title}\n   URL: ${r.url}\n   Snippet: ${r.description}\n   Age: ${r.age || r.page_age || "unknown"}`
-      )
-      .join("\n\n");
+        // Extract date from age field
+        const age = r.age || r.page_age || "";
+        let date = "Recent";
+        if (age) {
+          // Brave returns things like "2 days ago", "March 15, 2026"
+          date = age;
+        }
 
-    const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": anthropicKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
-        messages: [
-          {
-            role: "user",
-            content: `You are a research assistant for a LinkedIn content creator focused on AI, SaaS, startups, and venture capital.
-
-Given these search results for the topic "${topic}", extract and structure them into articles suitable for LinkedIn content creation.
-
-## Search Results
-${resultsText}
-
-## Instructions
-- Extract 8-15 most relevant articles
-- For each article, identify the key data point or insight that would make compelling LinkedIn content
-- Prioritize articles with: specific numbers/metrics, named companies, recent funding rounds, market trends
-- Skip generic or irrelevant results
-
-## Output Format
-Return ONLY a valid JSON array. No markdown, no explanation. Each object:
-[
-  {
-    "id": "unique-id",
-    "title": "Article title",
-    "source": "Publication name (e.g., TechCrunch, Forbes)",
-    "url": "https://...",
-    "date": "YYYY-MM-DD or approximate",
-    "summary": "2-3 sentence summary of the article",
-    "keyData": "The single most compelling data point or insight"
-  }
-]`,
-          },
-        ],
-      }),
-    });
-
-    if (!claudeRes.ok) {
-      const errText = await claudeRes.text();
-      return NextResponse.json(
-        { error: `Claude API failed: ${claudeRes.status} ${errText}` },
-        { status: 502 }
-      );
-    }
-
-    const claudeData = await claudeRes.json();
-    const text =
-      claudeData.content?.[0]?.text || "[]";
-
-    // Parse the JSON from Claude's response
-    let articles: ResearchArticle[];
-    try {
-      // Extract JSON array from response (handle potential markdown wrapping)
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
-      const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
-      articles = parsed.map((a: ResearchArticle) => ({
-        ...a,
-        selected: false,
-      }));
-    } catch {
-      return NextResponse.json(
-        { error: "Failed to parse research results", raw: text },
-        { status: 500 }
-      );
-    }
+        return {
+          id: `article-${i}-${Date.now()}`,
+          title: r.title,
+          source: sourceName,
+          url: r.url,
+          date,
+          summary: r.description || "",
+          keyData: "",
+          selected: false,
+        };
+      })
+      .slice(0, 15);
 
     return NextResponse.json({ articles });
   } catch (error) {

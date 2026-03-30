@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+
+export const maxDuration = 60;
 import type { ResearchArticle, ContentFormat } from "@/lib/types";
 import { toplistPrompt } from "@/lib/prompts/toplist";
 import { povPrompt } from "@/lib/prompts/pov";

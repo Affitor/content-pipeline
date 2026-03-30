@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const { postContent, title, format } = await req.json();
