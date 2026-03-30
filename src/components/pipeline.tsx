@@ -24,6 +24,7 @@ export default function Pipeline() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [writingIndex, setWritingIndex] = useState(-1);
+  const [imageLoadingIds, setImageLoadingIds] = useState<Set<string>>(new Set());
 
   const selectedArticles = articles.filter((a) => a.selected);
 
@@ -41,6 +42,7 @@ export default function Pipeline() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Research failed");
       setArticles(data.articles);
+      setOutputCount(1); // reset output count on new research
       setStep(1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Research failed");
@@ -59,7 +61,6 @@ export default function Pipeline() {
   const clearAll = () => setArticles((prev) => prev.map((a) => ({ ...a, selected: false })));
 
   // Step 4: Write posts (streaming)
-  // Each post uses a different primary article but ALL selected articles as context
   const handleWrite = useCallback(async () => {
     const selected = articles.filter((a) => a.selected);
     if (selected.length === 0) return;
@@ -72,11 +73,9 @@ export default function Pipeline() {
 
     for (let i = 0; i < count; i++) {
       setWritingIndex(i);
-      // Each post gets a different primary article, but all selected as context
       const primaryArticle = selected[i];
       const postId = `post-${Date.now()}-${i}`;
 
-      // Add empty post
       setPosts((prev) => [
         ...prev,
         {
@@ -111,6 +110,7 @@ export default function Pipeline() {
 
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
+        let buffer = "";
 
         if (reader) {
           let done = false;
@@ -118,8 +118,10 @@ export default function Pipeline() {
             const { value, done: readerDone } = await reader.read();
             done = readerDone;
             if (value) {
-              const chunk = decoder.decode(value);
-              const lines = chunk.split("\n");
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              // Keep last incomplete line in buffer
+              buffer = lines.pop() || "";
               for (const line of lines) {
                 if (line.startsWith("data: ") && line !== "data: [DONE]") {
                   try {
@@ -140,9 +142,35 @@ export default function Pipeline() {
               }
             }
           }
+          // Process any remaining buffer
+          if (buffer.startsWith("data: ") && buffer !== "data: [DONE]") {
+            try {
+              const parsed = JSON.parse(buffer.slice(6));
+              if (parsed.text) {
+                setPosts((prev) =>
+                  prev.map((p) =>
+                    p.id === postId
+                      ? { ...p, content: p.content + parsed.text }
+                      : p
+                  )
+                );
+              }
+            } catch {
+              // skip
+            }
+          }
         }
       } catch (err) {
+        // Mark the failed post with error content
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId && !p.content
+              ? { ...p, content: "[Error: failed to generate this post]" }
+              : p
+          )
+        );
         setError(err instanceof Error ? err.message : "Write failed");
+        break; // Stop the loop on error
       }
     }
     setWritingIndex(-1);
@@ -153,14 +181,11 @@ export default function Pipeline() {
   const handleGenerateImage = useCallback(
     async (postId: string) => {
       const post = posts.find((p) => p.id === postId);
-      if (!post) return;
+      if (!post || !post.content) return;
 
-      setPosts((prev) =>
-        prev.map((p) => (p.id === postId ? { ...p, imageUrl: "loading" } : p))
-      );
+      setImageLoadingIds((prev) => new Set(prev).add(postId));
 
       try {
-        // Step 1: Get infographic data from Claude
         const dataRes = await fetch("/api/image", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -173,7 +198,6 @@ export default function Pipeline() {
         const dataJson = await dataRes.json();
         if (!dataRes.ok) throw new Error(dataJson.error);
 
-        // Step 2: Render with Satori via /api/og
         const ogRes = await fetch("/api/og", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -193,12 +217,13 @@ export default function Pipeline() {
           )
         );
       } catch (err) {
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId ? { ...p, imageUrl: undefined } : p
-          )
-        );
         setError(err instanceof Error ? err.message : "Image generation failed");
+      } finally {
+        setImageLoadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(postId);
+          return next;
+        });
       }
     },
     [posts, articles]
@@ -214,7 +239,10 @@ export default function Pipeline() {
     const a = document.createElement("a");
     a.href = imageUrl;
     a.download = `affitor-${postId}.png`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(imageUrl);
   };
 
   return (
@@ -237,11 +265,11 @@ export default function Pipeline() {
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center gap-2">
               <button
-                onClick={() => i < step && setStep(i)}
+                onClick={() => i < step && !loading && setStep(i)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                   i === step
                     ? "bg-blue-600 text-white"
-                    : i < step
+                    : i < step && !loading
                     ? "bg-blue-600/20 text-blue-400 cursor-pointer hover:bg-blue-600/30"
                     : "bg-white/5 text-slate-500"
                 }`}
@@ -304,7 +332,7 @@ export default function Pipeline() {
             <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">
-                  📄 Articles Found — pick the ones you want to use
+                  📄 Articles Found - pick the ones you want to use
                 </h2>
                 <span className="text-slate-400 text-sm">
                   {selectedArticles.length} selected
@@ -362,11 +390,6 @@ export default function Pipeline() {
                         <p className="text-sm text-slate-400 mt-2">
                           {article.summary}
                         </p>
-                        {article.keyData && (
-                          <p className="text-sm text-amber-400/80 mt-1">
-                            {article.keyData}
-                          </p>
-                        )}
                         <p className="text-xs text-slate-500 mt-1 truncate">
                           {article.url}
                         </p>
@@ -378,7 +401,11 @@ export default function Pipeline() {
             </div>
             {selectedArticles.length > 0 && (
               <button
-                onClick={() => setStep(2)}
+                onClick={() => {
+                  // Clamp outputCount to new selection size
+                  setOutputCount((prev) => Math.min(prev, selectedArticles.length));
+                  setStep(2);
+                }}
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-medium transition-colors"
               >
                 Continue with {selectedArticles.length} article
@@ -517,6 +544,8 @@ export default function Pipeline() {
             )}
             {posts.map((post, i) => {
               const article = articles.find((a) => a.id === post.articleId);
+              const isImageLoading = imageLoadingIds.has(post.id);
+              const hasContent = post.content && !post.content.startsWith("[Error:");
               return (
                 <div
                   key={post.id}
@@ -536,15 +565,17 @@ export default function Pipeline() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => copyPost(post.content)}
-                        className="px-3 py-1.5 text-sm bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                        disabled={!hasContent}
+                        className="px-3 py-1.5 text-sm bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
                         title="Copy to clipboard"
                       >
                         📋 Copy
                       </button>
-                      {!post.imageUrl && (
+                      {!post.imageUrl && !isImageLoading && (
                         <button
                           onClick={() => handleGenerateImage(post.id)}
-                          className="px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors"
+                          disabled={loading || !hasContent}
+                          className="px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 disabled:opacity-30 disabled:cursor-not-allowed text-blue-400 rounded-lg transition-colors"
                         >
                           🖼️ Generate Image
                         </button>
@@ -559,12 +590,12 @@ export default function Pipeline() {
                     )}
                   </div>
                   {/* Image */}
-                  {post.imageUrl === "loading" && (
+                  {isImageLoading && (
                     <div className="mt-4 flex items-center gap-2 text-blue-400 text-sm">
                       <Spinner /> Generating infographic...
                     </div>
                   )}
-                  {post.imageUrl && post.imageUrl !== "loading" && (
+                  {post.imageUrl && (
                     <div className="mt-4">
                       <img
                         src={post.imageUrl}
@@ -589,6 +620,7 @@ export default function Pipeline() {
                   setPosts([]);
                   setArticles([]);
                   setTopic("");
+                  setOutputCount(1);
                 }}
                 className="px-6 py-3 bg-white/5 hover:bg-white/10 rounded-xl font-medium transition-colors"
               >

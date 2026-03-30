@@ -5,7 +5,14 @@ export const runtime = "edge";
 
 export async function POST(req: NextRequest) {
   try {
-    const { infographic } = await req.json();
+    const body = await req.json();
+    const infographic = body?.infographic;
+    if (!infographic) {
+      return new Response(JSON.stringify({ error: "infographic data required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const { headline, subheadline, items, footer, style } = infographic;
 
     const image = new ImageResponse(

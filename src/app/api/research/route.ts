@@ -35,7 +35,10 @@ function parseAge(age: string): number {
 }
 
 function extractSource(url: string, metaUrl?: { hostname?: string; netloc?: string }): string {
-  const hostname = metaUrl?.hostname || metaUrl?.netloc || new URL(url).hostname;
+  let hostname = metaUrl?.hostname || metaUrl?.netloc || "";
+  if (!hostname) {
+    try { hostname = new URL(url).hostname; } catch { hostname = url; }
+  }
   const clean = hostname
     .replace(/^www\./, "")
     .replace(/\.com$|\.org$|\.net$|\.io$|\.co$/, "");

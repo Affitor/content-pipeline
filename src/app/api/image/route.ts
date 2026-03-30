@@ -74,7 +74,7 @@ Return ONLY valid JSON, no markdown:
     });
 
     const text = response.content[0].type === "text" ? response.content[0].text : "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const jsonMatch = text.match(/\{[\s\S]*?\}(?=[^}]*$)/);
     if (!jsonMatch) {
       return NextResponse.json(
         { error: "Failed to generate infographic data" },
@@ -82,7 +82,20 @@ Return ONLY valid JSON, no markdown:
       );
     }
 
-    const infographicData = JSON.parse(jsonMatch[0]);
+    let infographicData;
+    try {
+      infographicData = JSON.parse(jsonMatch[0]);
+    } catch {
+      // Try greedy match as fallback
+      const greedyMatch = text.match(/\{[\s\S]*\}/);
+      if (!greedyMatch) {
+        return NextResponse.json(
+          { error: "Failed to parse infographic JSON" },
+          { status: 500 }
+        );
+      }
+      infographicData = JSON.parse(greedyMatch[0]);
+    }
 
     return NextResponse.json({ infographic: infographicData });
   } catch (error) {
