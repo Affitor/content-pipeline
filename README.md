@@ -48,8 +48,8 @@ cp .env.example .env.local
 Add your API keys to `.env.local`:
 
 ```bash
-# Get yours at https://console.anthropic.com/
-ANTHROPIC_API_KEY=
+# One key for Claude and 100+ other models: https://kymaapi.com?utm_source=content-pipeline
+KYMA_API_KEY=
 
 # Get yours at https://brave.com/search/api/
 BRAVE_SEARCH_API_KEY=
@@ -67,14 +67,14 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Deploy your own instance to Vercel:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Affitor/content-pipeline&env=ANTHROPIC_API_KEY,BRAVE_SEARCH_API_KEY&envDescription=API%20keys%20needed%20to%20run%20this%20app&envLink=https://github.com/Affitor/content-pipeline%23running-locally)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Affitor/content-pipeline&env=KYMA_API_KEY,BRAVE_SEARCH_API_KEY&envDescription=API%20keys%20needed%20to%20run%20this%20app&envLink=https://github.com/Affitor/content-pipeline%23running-locally)
 
 ## Tech Stack
 
 | Technology | Purpose |
 |-----------|---------|
 | [Next.js 16](https://nextjs.org) | App Router, API Routes, Edge Runtime |
-| [Anthropic Claude](https://anthropic.com) | Content generation (Sonnet 4) |
+| [Kyma API](https://kymaapi.com?utm_source=content-pipeline) | Content generation with Claude Sonnet 4.6, through one key |
 | [Brave Search API](https://brave.com/search/api/) | Web + News search |
 | [Satori](https://github.com/vercel/satori) | Server-side image generation |
 | [Tailwind CSS v4](https://tailwindcss.com) | Styling |
