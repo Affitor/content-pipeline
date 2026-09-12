@@ -53,10 +53,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const client = new Anthropic();
+    const client = new Anthropic({ baseURL: "https://kymaapi.com", apiKey: process.env.KYMA_API_KEY });
 
     const stream = await client.messages.stream({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 4096,
       messages: [
         {
